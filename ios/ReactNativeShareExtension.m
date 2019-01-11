@@ -39,6 +39,9 @@ RCT_EXPORT_MODULE();
 RCT_EXPORT_METHOD(close) {
     [extensionContext completeRequestReturningItems:nil
                                   completionHandler:nil];
+
+    // ---- Probleme de rootTag, process JS pas ferme ----
+    exit(0);
 }
 
 
