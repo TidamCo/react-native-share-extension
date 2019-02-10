@@ -72,14 +72,40 @@ RCT_REMAP_METHOD(data,
         NSExtensionItem *item = [context.inputItems firstObject];
 
         NSArray *attachments = item.attachments;
+        NSUInteger maxIdx = [attachments count] - 1;
 
         __block NSItemProvider *urlProvider = nil;
         __block NSItemProvider *imageProvider = nil;
         __block NSItemProvider *textProvider = nil;
-        __block NSUInteger index = 0;
 
         [attachments enumerateObjectsUsingBlock:^(NSItemProvider *provider, NSUInteger idx, BOOL *stop) {
-            if ([provider hasItemConformingToTypeIdentifier:IMAGE_IDENTIFIER]){
+            if([provider hasItemConformingToTypeIdentifier:URL_IDENTIFIER]) {
+                urlProvider = provider;
+                [urlProvider loadItemForTypeIdentifier:URL_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                    NSURL *url = (NSURL *)item;
+                    [itemArray addObject: @{
+                                            @"type": @"text/plain",
+                                            @"value": [url absoluteString]
+                                            }];
+                    if (callback && (idx == maxIdx)) {
+                        callback(itemArray, nil);
+                    }
+                }];
+            }
+            else if ([provider hasItemConformingToTypeIdentifier:TEXT_IDENTIFIER]){
+                textProvider = provider;
+                [textProvider loadItemForTypeIdentifier:TEXT_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                    NSString *text = (NSString *)item;
+                    [itemArray addObject: @{
+                                            @"type": @"text/plain",
+                                            @"value": text
+                                            }];
+                    if (callback && (idx == maxIdx)) {
+                        callback(itemArray, nil);
+                    }
+                }];
+            }
+            else if ([provider hasItemConformingToTypeIdentifier:IMAGE_IDENTIFIER]){
                 imageProvider = provider;
                 [imageProvider loadItemForTypeIdentifier:IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
                     /**
@@ -96,7 +122,7 @@ RCT_REMAP_METHOD(data,
                     if ([(NSObject *)item isKindOfClass:[UIImage class]]){
                         sharedImage = (UIImage *)item;
                         NSString *name = @"RNSE_TEMP_IMG_";
-                        NSString *nbFiles = [NSString stringWithFormat:@"%@",  @(index)];
+                        NSString *nbFiles = [NSString stringWithFormat:@"%@",  @(idx)];
                         NSString *fullname = [name stringByAppendingString:(nbFiles)];
                         filename = [fullname stringByAppendingPathExtension:@"png"];
                     }else if ([(NSObject *)item isKindOfClass:[NSURL class]]){
@@ -108,48 +134,22 @@ RCT_REMAP_METHOD(data,
                     NSString *filePath = [NSTemporaryDirectory() stringByAppendingPathComponent:filename];
 
                     [UIImageJPEGRepresentation(sharedImage, 1.0) writeToFile:filePath atomically:YES];
-                    index += 1;
 
                     [itemArray addObject: @{
                                             @"type": [filePath pathExtension],
                                             @"value": filePath
                                             }];
-                    if (callback && (index == [attachments count])) {
+                    if (callback && (idx == maxIdx)) {
                         callback(itemArray, nil);
                     }
 
                 }];
-            } else if([provider hasItemConformingToTypeIdentifier:URL_IDENTIFIER]) {
-                urlProvider = provider;
-                index += 1;
-                [urlProvider loadItemForTypeIdentifier:URL_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
-                    NSURL *url = (NSURL *)item;
-                    [itemArray addObject: @{
-                                            @"type": @"text/plain",
-                                            @"value": [url absoluteString]
-                                            }];
-                    if (callback && (index == [attachments count])) {
-                        callback(itemArray, nil);
-                    }
-                }];
-            } else if ([provider hasItemConformingToTypeIdentifier:TEXT_IDENTIFIER]){
-                textProvider = provider;
-                [textProvider loadItemForTypeIdentifier:TEXT_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
-                    NSString *text = (NSString *)item;
-                    index += 1;
-                    [itemArray addObject: @{
-                                            @"type": @"text/plain",
-                                            @"value": text
-                                            }];
-                    if (callback && (index == [attachments count])) {
-                        callback(itemArray, nil);
-                    }
-                }];
             } else {
-                index += 1;
+                if (callback && (idx == maxIdx)) {
+                    callback(itemArray, nil);
+                }
             }
         }];
-        //        }
     }
     @catch (NSException *exception) {
         if(callback) {
