@@ -74,6 +74,12 @@ public class ShareModule extends ReactContextBaseJavaModule {
                 Uri uri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
                 dataMap.putString("value", "file://" + RealPathUtil.getRealPathFromURI(currentActivity, uri));
                 dataArrayMap.pushMap(dataMap);
+                if (intent.getStringExtra(Intent.EXTRA_TEXT) != "") {
+                  WritableMap dataMap2 = Arguments.createMap();
+                  dataMap2.putString("type", "text/plain");
+                  dataMap2.putString("value", intent.getStringExtra(Intent.EXTRA_TEXT));
+                  dataArrayMap.pushMap(dataMap2);
+                }
             } else if (Intent.ACTION_SEND_MULTIPLE.equals(action) && mediaTypesSupported.contains(typePart)) {
                 ArrayList<Uri> uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
                 for (Uri uri : uris) {
